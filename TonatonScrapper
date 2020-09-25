@@ -1,0 +1,76 @@
+import requests
+from bs4 import BeautifulSoup
+import csv
+import time
+
+
+def get_page(url):
+    response = requests.get(url)
+
+    if not response.ok:
+        print("Server responded:", response.status_code)
+    else:
+        soup = BeautifulSoup(response.text, "html.parser")
+    return soup
+
+
+def get_detail_data(soup):
+    try:
+        title = soup.find("h1", class_="title--3s1R8").text
+    except:
+        title = ""
+
+    try:
+        date = soup.find("h3", class_="sub-title--37mkY").text
+    except:
+        date = ""
+
+    try:
+        price = soup.find("div", class_="amount--3NTpl").text
+        price = price.split(maxsplit=1)[-1]
+    except:
+        price = ""
+
+    data = {
+        "title": title,
+        "date": date,
+        "price": price,
+    }
+
+    return data
+
+
+def get_index_data(soup):
+    try:
+        links = soup.findAll("a", class_="card-link--3ssYv gtm-ad-item")
+    except:
+        links = []
+
+    urls = ["https://tonaton.com"+item.get("href") for item in links]
+
+    return urls
+
+
+def write_csv(data, url):
+    with open("tonatonoutput.csv", "a") as csvfile:
+        writer = csv.writer(csvfile)
+
+        row = [data["title"], data["date"], data["price"], url]
+
+        writer.writerow(row)
+
+
+def main():
+    pages = [1, 2]
+    for page in pages:
+        url = "https://tonaton.com/en/ads/ghana/property?page={}".format(page)
+
+        products = get_index_data(get_page(url))
+
+        for link in products:
+            data = get_detail_data(get_page(link))
+            write_csv(data, link)
+
+
+if __name__ == '__main__':
+    main()
